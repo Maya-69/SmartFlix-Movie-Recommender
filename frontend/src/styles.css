@@ -1,0 +1,454 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap');
+
+:root {
+  color-scheme: dark;
+  --bg-0: #07111f;
+  --bg-1: #0c1728;
+  --panel: rgba(15, 23, 42, 0.82);
+  --panel-border: rgba(148, 163, 184, 0.18);
+  --text-main: #f8fafc;
+  --text-soft: #cbd5e1;
+  --accent: #f5b942;
+  --accent-2: #7dd3fc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Space Grotesk', sans-serif;
+  color: var(--text-main);
+  background:
+    radial-gradient(circle at top left, rgba(125, 211, 252, 0.18), transparent 30%),
+    radial-gradient(circle at top right, rgba(245, 185, 66, 0.14), transparent 28%),
+    linear-gradient(180deg, var(--bg-1), var(--bg-0));
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.45), transparent 80%);
+}
+
+.app-shell {
+  min-height: 100vh;
+  position: relative;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(7, 17, 31, 0.76);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.brand-mark {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-main) !important;
+}
+
+.brand-mark:hover {
+  color: var(--accent) !important;
+}
+
+.user-chip {
+  color: var(--accent-2) !important;
+  font-weight: 500;
+}
+
+.glass-card {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(18px);
+}
+
+.auth-layout {
+  min-height: calc(100vh - 140px);
+  display: grid;
+  place-items: center;
+  padding: 2rem 0;
+}
+
+.auth-card {
+  width: min(100%, 760px);
+  border-radius: 28px;
+  padding: clamp(1.5rem, 4vw, 3rem);
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.78rem;
+  color: var(--accent-2);
+}
+
+.input-dark,
+.form-control.input-dark,
+.form-select.input-dark {
+  background: rgba(15, 23, 42, 0.88);
+  border-color: rgba(148, 163, 184, 0.24);
+  color: var(--text-main);
+}
+
+.input-dark:focus,
+.form-control.input-dark:focus,
+.form-select.input-dark:focus {
+  background: rgba(15, 23, 42, 0.98);
+  color: var(--text-main);
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 0.2rem rgba(125, 211, 252, 0.18);
+}
+
+.page-stack {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.hero-panel,
+.note-card,
+.movie-card,
+.modal-card {
+  border-radius: 24px;
+}
+
+.hero-panel {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.stat-pill {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 18px;
+  padding: 0.9rem 1rem;
+  min-width: 142px;
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.stat-label {
+  display: block;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
+.note-card {
+  background: linear-gradient(180deg, rgba(245, 185, 66, 0.12), rgba(125, 211, 252, 0.08));
+  border: 1px solid rgba(245, 185, 66, 0.16);
+  padding: 1.25rem;
+}
+
+.note-title {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.section-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.movie-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1rem;
+}
+
+.recommendation-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.recommendation-card {
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  color: var(--text-main);
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.recommendation-card:hover,
+.recommendation-card:focus-visible {
+  transform: translateY(-4px);
+  border-color: rgba(245, 185, 66, 0.4);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  outline: none;
+}
+
+.recommendation-thumb-wrap {
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+}
+
+.recommendation-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+}
+
+.metric-card {
+  border-radius: 22px;
+  padding: 1.25rem;
+}
+
+.metric-label {
+  display: block;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  margin-bottom: 0.35rem;
+}
+
+.metric-value {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.graph-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.graph-card {
+  border-radius: 24px;
+  padding: 1rem;
+}
+
+.graph-image {
+  width: 100%;
+  height: auto;
+  border-radius: 16px;
+  display: block;
+}
+
+.how-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.how-card {
+  border-radius: 24px;
+  padding: 1.25rem;
+}
+
+.plain-list {
+  padding-left: 1.1rem;
+  color: var(--text-soft);
+}
+
+.score-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.trace-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.trace-panel {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 18px;
+  padding: 1rem;
+}
+
+.trace-label {
+  display: block;
+  color: var(--text-soft);
+  margin-bottom: 0.35rem;
+}
+
+.trace-value {
+  display: block;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.formula-box {
+  background: rgba(125, 211, 252, 0.08);
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  border-radius: 18px;
+  padding: 1rem;
+  color: var(--text-soft);
+  display: grid;
+  gap: 0.5rem;
+}
+
+.rule-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+.rule-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 18px;
+  padding: 1rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.rule-text {
+  color: var(--text-soft);
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.profile-card {
+  border-radius: 22px;
+  padding: 1.25rem;
+}
+
+.movie-card {
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  color: var(--text-main);
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.movie-card:hover,
+.movie-card:focus-visible {
+  transform: translateY(-4px);
+  border-color: rgba(125, 211, 252, 0.4);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  outline: none;
+}
+
+.movie-poster-wrap {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+}
+
+.movie-poster {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.movie-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, rgba(7, 17, 31, 0.1), rgba(7, 17, 31, 0.75));
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.movie-card:hover .movie-overlay,
+.movie-card:focus-visible .movie-overlay {
+  opacity: 1;
+}
+
+.movie-overlay-text {
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(7, 17, 31, 0.65);
+  padding: 0.6rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+}
+
+.movie-genres {
+  color: var(--text-soft);
+  font-size: 0.92rem;
+}
+
+.compact-hero {
+  grid-template-columns: 1.3fr 0.9fr;
+  align-items: center;
+}
+
+.explore-controls {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.modal-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(2, 6, 23, 0.75);
+  backdrop-filter: blur(10px);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.modal-card {
+  width: min(100%, 760px);
+  max-height: min(90vh, 900px);
+  overflow: auto;
+  padding: 1.5rem;
+}
+
+@media (max-width: 991px) {
+  .hero-panel,
+  .compact-hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 575px) {
+  .auth-card {
+    border-radius: 20px;
+  }
+
+  .movie-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}

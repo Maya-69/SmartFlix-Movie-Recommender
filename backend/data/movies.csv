@@ -1,0 +1,13 @@
+movie_id,title,genres,poster_url
+1,The Matrix,Action|Sci-Fi,https://media.themoviedb.org/t/p/w300_and_h450_face/aOIuZAjPaRIE6CMzbazvcHuHXDc.jpg
+2,Inception,Action|Adventure|Sci-Fi,https://media.themoviedb.org/t/p/w300_and_h450_face/xlaY2zyzMfkhk0HSC5VUwzoZPU1.jpg
+3,Interstellar,Adventure|Drama|Sci-Fi,https://media.themoviedb.org/t/p/w300_and_h450_face/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg
+4,The Dark Knight,Action|Crime|Drama,https://media.themoviedb.org/t/p/w300_and_h450_face/qJ2tW6WMUDux911r6m7haRef0WH.jpg
+5,Parasite,Drama|Thriller,https://media.themoviedb.org/t/p/w300_and_h450_face/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg
+6,Spirited Away,Animation|Adventure|Fantasy,https://media.themoviedb.org/t/p/w300_and_h450_face/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg
+7,The Godfather,Crime|Drama,https://media.themoviedb.org/t/p/w300_and_h450_face/3bhkrj58Vtu7enYsRolD1fZdja1.jpg
+8,Avengers: Endgame,Action|Adventure|Drama,https://media.themoviedb.org/t/p/w300_and_h450_face/ulzhLuWrPK07P1YkdWQLZnQh1JL.jpg
+9,Coco,Animation|Family|Fantasy,https://media.themoviedb.org/t/p/w300_and_h450_face/6Ryitt95xrO8KXuqRGm1fUuNwqF.jpg
+10,Whiplash,Drama|Music,https://media.themoviedb.org/t/p/w300_and_h450_face/7fn624j5lj3xTme2SgiLCeuedmO.jpg
+11,La La Land,Comedy|Drama|Music,https://media.themoviedb.org/t/p/w300_and_h450_face/uDO8zWDhfWwoFdKS4fzkUJt0Rf0.jpg
+12,Titanic,Drama|Romance,https://media.themoviedb.org/t/p/w300_and_h450_face/9xjZS2rlVxm8SFx8kPC3aIGCOYQ.jpg
