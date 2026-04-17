@@ -15,6 +15,8 @@ python -m backend.app
 
 The backend runs on `http://localhost:5000` by default.
 
+**Note the IP/hostname and port where your backend is running** – you'll need this for the frontend.
+
 ### 2. Frontend
 
 In a second terminal:
@@ -22,12 +24,50 @@ In a second terminal:
 ```bash
 cd frontend
 npm install
+```
+
+**Configure the backend URL** by creating or editing `.env.local`:
+
+```bash
+# For local development on same machine:
+echo "VITE_API_BASE_URL=http://localhost:5000" > .env.local
+
+# For different machine on LAN (replace 192.168.1.100 with your backend IP):
+echo "VITE_API_BASE_URL=http://192.168.1.100:5000" > .env.local
+
+# For Docker compose or custom setup:
+echo "VITE_API_BASE_URL=http://backend:5000" > .env.local
+```
+
+Then start the frontend:
+
+```bash
 npm run dev
 ```
 
 The frontend runs on `http://localhost:5173` by default.
 
-### 3. Optional checks
+### 3. Troubleshooting
+
+**Posters show as "unavailable"?**
+
+This happens when the frontend can't reach the backend API. Make sure:
+1. The backend is running: `python -m backend.app` (should say "Running on...")
+2. The frontend's `.env.local` file is configured with the correct backend URL
+3. Your firewall allows connections on port 5000 (backend)
+4. If running on LAN, verify the IP with: `hostname -I` (Linux) or check Network Settings (macOS/Windows)
+
+**Example fix for LAN setup:**
+```bash
+# On the machine running the backend:
+hostname -I          # Get backend IP, e.g., 192.168.1.100
+
+# On the machine with the frontend, edit frontend/.env.local:
+VITE_API_BASE_URL=http://192.168.1.100:5000
+npm run dev
+```
+
+### 4. Optional checks
 
 ```bash
 python -m unittest discover backend/tests
