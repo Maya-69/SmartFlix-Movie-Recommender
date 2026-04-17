@@ -8,9 +8,8 @@ import Home from './pages/Home'
 import Interactions from './pages/Interactions'
 import Login from './pages/Login'
 import HowItWorks from './pages/HowItWorks'
-import Recommend from './pages/Recommend'
 import Profile from './pages/Profile'
-import Visualizations from './pages/Visualizations'
+import Recommendations from './pages/Recommendations'
 
 function RequireAuth({ currentUser, children }) {
   if (!currentUser) {
@@ -152,11 +151,10 @@ function App() {
                 <>
                   <Link className={`nav-link ${location.pathname === '/home' ? 'active' : ''}`} to="/home">Home</Link>
                   <Link className={`nav-link ${location.pathname === '/explore' ? 'active' : ''}`} to="/explore">Explore</Link>
+                  <Link className={`nav-link ${location.pathname === '/recommendations' ? 'active' : ''}`} to="/recommendations">Recommendations</Link>
                   <Link className={`nav-link ${location.pathname === '/interactions' ? 'active' : ''}`} to="/interactions">Interactions</Link>
-                  <Link className={`nav-link ${location.pathname === '/recommend' ? 'active' : ''}`} to="/recommend">Recommend</Link>
                   <Link className={`nav-link ${location.pathname === '/how-it-works' ? 'active' : ''}`} to="/how-it-works">How It Works</Link>
                   <Link className={`nav-link ${location.pathname === '/profile' ? 'active' : ''}`} to="/profile">Profile</Link>
-                  <Link className={`nav-link ${location.pathname === '/visualizations' ? 'active' : ''}`} to="/visualizations">Visuals</Link>
                   <span className="nav-link user-chip">{currentUser.username}</span>
                   <button className="btn btn-outline-light btn-sm" type="button" onClick={handleLogout}>Logout</button>
                 </>
@@ -197,6 +195,14 @@ function App() {
             )}
           />
           <Route
+            path="/recommendations"
+            element={(
+              <RequireAuth currentUser={currentUser}>
+                <Recommendations currentUser={currentUser} onSelectMovie={setSelectedMovie} />
+              </RequireAuth>
+            )}
+          />
+          <Route
             path="/interactions"
             element={(
               <RequireAuth currentUser={currentUser}>
@@ -205,14 +211,6 @@ function App() {
                   interactions={interactions}
                   loadingInteractions={loadingInteractions}
                 />
-              </RequireAuth>
-            )}
-          />
-          <Route
-            path="/recommend"
-            element={(
-              <RequireAuth currentUser={currentUser}>
-                <Recommend currentUser={currentUser} />
               </RequireAuth>
             )}
           />
@@ -229,14 +227,6 @@ function App() {
             element={(
               <RequireAuth currentUser={currentUser}>
                 <Profile currentUser={currentUser} />
-              </RequireAuth>
-            )}
-          />
-          <Route
-            path="/visualizations"
-            element={(
-              <RequireAuth currentUser={currentUser}>
-                <Visualizations />
               </RequireAuth>
             )}
           />

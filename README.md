@@ -1,6 +1,6 @@
 # SmartFlix
 
-SmartFlix is a full-stack movie recommendation app. It uses a Flask backend, a React frontend, SQLite for persistence, and a hybrid recommender built from SVD, a neural network, and fuzzy logic.
+SmartFlix is a full-stack movie recommendation app with offline posters, local SQLite storage, and a feedback-driven hybrid recommender.
 
 ## How To Run
 
@@ -35,6 +35,10 @@ cd frontend
 npm run build
 ```
 
+### 4. Development flow
+
+Run the backend and frontend together, then log in, rate a few movies, and use the Home page feedback buttons to refresh the blended recommendations automatically. The Recommendations page compares the SVD, TF-IDF, and final hybrid outputs, and it includes a reset button for clearing your local recommendation feedback.
+
 ## Project Structure
 
 `backend/`
@@ -44,13 +48,13 @@ npm run build
 : Flask app factory and startup wiring.
 
 `backend/models.py`
-: SQLAlchemy models for users, movies, and interactions.
+: SQLAlchemy models for users, movies, interactions, and recommendation feedback.
 
 `backend/routes/`
-: API endpoints for movies, users, interactions, recommendations, profile, metrics, and admin actions.
+: API endpoints for movies, users, interactions, profile, admin actions, and recommendation feedback.
 
 `backend/services/`
-: Recommendation logic, MovieLens mapping, TMDB poster handling, profile classification, and training metrics.
+: Movie loading, MovieLens mapping utilities, profile classification, and hybrid recommendation logic.
 
 `backend/data/`
 : Seed CSVs and MovieLens sample data used for training and catalog building.
@@ -65,7 +69,7 @@ npm run build
 : React app built with Vite.
 
 `frontend/src/pages/`
-: Route-level pages like Home, Explore, Interactions, Recommend, How It Works, Profile, and Visuals.
+: Route-level pages like Home, Explore, Interactions, Recommendations, How It Works, Login, and Profile.
 
 `frontend/src/components/`
 : Shared UI pieces such as movie cards and interaction modals.
@@ -84,64 +88,23 @@ npm run build
 
 ## How The App Works
 
-The frontend loads the movie catalog from the backend and shows posters, titles, and genres. Clicking a movie opens an interaction form instead of playback. That form stores structured feedback in SQLite, which becomes training signal for the recommendation pipeline.
+The frontend loads the movie catalog from the backend and shows posters, titles, and genres. Clicking a movie opens an interaction form instead of playback. That form stores structured feedback in SQLite.
 
-The backend then exposes three recommendation layers:
+The Home page shows blended recommendations and lets you mark each one as helpful or not helpful. When you submit feedback, SmartFlix re-fetches the hybrid ranking immediately so the list reflects the latest signal.
 
-1. SVD learns broad collaborative patterns from the movie ratings data.
-2. The neural network learns how user behavior and movie identity interact.
-3. Fuzzy logic adds a small final adjustment based on the user’s behavior profile.
+The backend supports:
 
-The result is a hybrid score that is more flexible than SVD alone and more stable than a raw NN prediction.
-
-## Recommendation Pipeline
-
-### SVD
-
-SVD is the collaborative baseline. It looks for patterns in rating history and recommends items that similar users tended to like. In SmartFlix it is useful because it gives strong ranking signals even when the current user has only a small amount of interaction data.
-
-Why it helps:
-
-- It captures latent taste patterns.
-- It works well on sparse user-item matrices.
-- It gives a reliable starting score for hybrid ranking.
-
-### Neural Network
-
-The NN adds a nonlinear layer on top of the collaborative signal. It uses:
-
-- user id
-- movie id
-- normalized watch duration
-- skipped scenes
-- skipped music
-- interest level
-
-Why it helps:
-
-- It can learn interactions SVD cannot express directly.
-- It incorporates explicit behavior, not just rating history.
-- It adjusts the score when the user’s watch behavior suggests stronger or weaker interest.
-
-In this app the NN is used as a behavior-aware scorer, not as a replacement for SVD. That matters because the catalog is small and sparse, so a pure NN can become unstable. The app therefore keeps the NN grounded by combining it with SVD and calibration logic.
-
-### Fuzzy Logic
-
-Fuzzy logic is the last adjustment layer. It interprets user behavior in human terms like low, medium, and high duration or interest, then turns that into a small positive boost.
-
-Why it helps:
-
-- It makes the recommendation stack easier to explain.
-- It adds a small rule-based correction when the behavior profile is clear.
-- It avoids overreacting, because the boost is intentionally small.
-
-In SmartFlix, fuzzy logic is not meant to do the heavy lifting. It just nudges the final score when the user’s behavior is consistent.
+1. User creation and lookup.
+2. Interaction capture and retrieval.
+3. User behavior profiling from interaction history.
+4. Hybrid recommendation blending from SVD, TF-IDF, and learned feedback.
+5. Offline local poster delivery from static files.
 
 ## Data Sources
 
 - Seed catalog data lives in `backend/data/movies.csv`.
-- MovieLens sample data in `backend/data/ml-latest-small/` is used for training and movie-title mapping.
-- User interactions stored in SQLite are merged into the training data.
+- MovieLens sample data in `backend/data/ml-latest-small/` is available for title mapping utilities.
+- User interactions are stored in SQLite.
 - Poster images are cached locally in `backend/static/posters/` and served by Flask.
 
 ## API Overview
@@ -150,11 +113,13 @@ In SmartFlix, fuzzy logic is not meant to do the heavy lifting. It just nudges t
 - `POST /user` creates or resolves a user.
 - `POST /interact` stores structured feedback.
 - `GET /interact` returns a user’s stored interactions.
-- `GET /recommend/svd` returns SVD-only recommendations.
-- `GET /recommend/svd-nn` returns SVD + NN recommendations.
-- `GET /recommend/full` returns the full hybrid recommendation with fuzzy adjustment.
-- `GET /metrics/nn` returns NN training metrics and plots.
 - `GET /profile/user` returns the user behavior profile.
+- `GET /recommendations/svd` returns collaborative recommendations.
+- `GET /recommendations/content` returns TF-IDF content recommendations.
+- `GET /recommendations/final` returns the blended hybrid recommendations.
+- `POST /recommendations/feedback` stores helpful / not helpful feedback.
+- `POST /recommendations/feedback/reset` clears recommendation feedback for the current user.
+- `POST /admin/users/cleanup` removes users (`mode=all` or `mode=inactive`).
 
 ## Poster Storage
 
@@ -173,4 +138,5 @@ npm run build
 ## Notes
 
 - Video playback is intentionally not implemented. Clicking a movie opens an interaction form.
-- The catalog currently contains 100 movies with locally cached posters.
+- The catalog currently contains locally cached posters only, with no runtime poster API calls.
+- Poster display is offline-only at runtime using local static files.

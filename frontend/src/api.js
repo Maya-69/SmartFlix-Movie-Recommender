@@ -37,27 +37,34 @@ export const api = {
     const suffix = query.toString() ? `?${query.toString()}` : ''
     return request(`/interact${suffix}`)
   },
-  getSvdRecommendations: (params = {}) => {
-    const query = new URLSearchParams(params)
-    const suffix = query.toString() ? `?${query.toString()}` : ''
-    return request(`/recommend/svd${suffix}`)
-  },
-  getSvdNnRecommendations: (params = {}) => {
-    const query = new URLSearchParams(params)
-    const suffix = query.toString() ? `?${query.toString()}` : ''
-    return request(`/recommend/svd-nn${suffix}`)
-  },
-  getFullRecommendations: (params = {}) => {
-    const query = new URLSearchParams(params)
-    const suffix = query.toString() ? `?${query.toString()}` : ''
-    return request(`/recommend/full${suffix}`)
-  },
-  getNnMetrics: () => request('/metrics/nn'),
   getUserProfile: (params = {}) => {
     const query = new URLSearchParams(params)
     const suffix = query.toString() ? `?${query.toString()}` : ''
     return request(`/profile/user${suffix}`)
   },
+  getSvdRecommendations: (params = {}) => {
+    const query = new URLSearchParams(params)
+    const suffix = query.toString() ? `?${query.toString()}` : ''
+    return request(`/recommendations/svd${suffix}`)
+  },
+  getContentRecommendations: (params = {}) => {
+    const query = new URLSearchParams(params)
+    const suffix = query.toString() ? `?${query.toString()}` : ''
+    return request(`/recommendations/content${suffix}`)
+  },
+  getFinalRecommendations: (params = {}) => {
+    const query = new URLSearchParams(params)
+    const suffix = query.toString() ? `?${query.toString()}` : ''
+    return request(`/recommendations/final${suffix}`)
+  },
+  submitRecommendationFeedback: (payload) => request('/recommendations/feedback', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }),
+  resetRecommendationFeedback: (payload) => request('/recommendations/feedback/reset', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }),
 }
 
 export { API_BASE_URL }

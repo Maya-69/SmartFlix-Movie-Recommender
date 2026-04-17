@@ -1,12 +1,5 @@
 import { useMemo } from 'react'
 
-const durationLabel = {
-  '10': '10 min',
-  '30': '30 min',
-  '60': '60 min',
-  full: 'Full',
-}
-
 function boolTag(value, positiveText = 'Yes', negativeText = 'No') {
   if (value) {
     return <span className="badge rounded-pill text-bg-success">{positiveText}</span>
@@ -51,12 +44,13 @@ function Interactions({ currentUser, interactions, loadingInteractions }) {
               <thead>
                 <tr>
                   <th>Movie</th>
-                  <th>Watched</th>
+                  <th>Rating</th>
                   <th>Duration</th>
-                  <th>Completed</th>
-                  <th>Skipped Scenes</th>
-                  <th>Skipped Music</th>
-                  <th>Interest</th>
+                  <th>Completion</th>
+                  <th>One Sitting</th>
+                  <th>Skips</th>
+                  <th>Watch Again</th>
+                  <th>Time of Day</th>
                   <th>Captured At</th>
                 </tr>
               </thead>
@@ -67,12 +61,13 @@ function Interactions({ currentUser, interactions, loadingInteractions }) {
                       <div className="fw-semibold">{row.movie_title || `Movie #${row.movie_id}`}</div>
                       <small className="text-secondary">ID: {row.movie_id}</small>
                     </td>
-                    <td>{boolTag(row.watched)}</td>
-                    <td>{durationLabel[row.watch_duration] || row.watch_duration}</td>
-                    <td>{boolTag(row.completed)}</td>
-                    <td>{boolTag(row.skipped_scenes, 'Skipped', 'No')}</td>
-                    <td>{boolTag(row.skipped_music, 'Skipped', 'No')}</td>
-                    <td><span className="badge text-bg-warning">{row.interest_level}/5</span></td>
+                    <td><span className="badge text-bg-warning">{row.rating}/5</span></td>
+                    <td>{row.watch_duration_minutes != null ? `${row.watch_duration_minutes} min` : '-'}</td>
+                    <td>{row.percent_completed != null ? `${row.percent_completed}%` : '-'}</td>
+                    <td>{boolTag(row.watched_one_sitting)}</td>
+                    <td>{row.skip_count}</td>
+                    <td>{boolTag(row.would_watch_again)}</td>
+                    <td className="text-capitalize">{row.time_of_day || '-'}</td>
                     <td>{row.created_at ? new Date(row.created_at).toLocaleString() : '-'}</td>
                   </tr>
                 ))}

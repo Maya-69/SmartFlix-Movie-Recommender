@@ -1,30 +1,27 @@
 from __future__ import annotations
 
 import csv
-import os
 import re
 from collections import Counter
 from pathlib import Path
-from urllib.parse import quote_plus
+from urllib.parse import urlparse
 
 from backend.models import Movie
-from backend.services.movielens_service import load_movielens_tmdb_by_movie_id
-from backend.services.tmdb_service import enrich_movie_poster_from_tmdb
 
 
 DEFAULT_MOVIES = [
-    {"movie_id": 1, "title": "The Matrix", "genres": "Action|Sci-Fi", "poster_url": "https://media.themoviedb.org/t/p/w300_and_h450_face/aOIuZAjPaRIE6CMzbazvcHuHXDc.jpg"},
-    {"movie_id": 2, "title": "Inception", "genres": "Action|Adventure|Sci-Fi", "poster_url": "https://media.themoviedb.org/t/p/w300_and_h450_face/xlaY2zyzMfkhk0HSC5VUwzoZPU1.jpg"},
-    {"movie_id": 3, "title": "Interstellar", "genres": "Adventure|Drama|Sci-Fi", "poster_url": "https://media.themoviedb.org/t/p/w300_and_h450_face/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg"},
-    {"movie_id": 4, "title": "The Dark Knight", "genres": "Action|Crime|Drama", "poster_url": "https://media.themoviedb.org/t/p/w300_and_h450_face/qJ2tW6WMUDux911r6m7haRef0WH.jpg"},
-    {"movie_id": 5, "title": "Parasite", "genres": "Drama|Thriller", "poster_url": "https://media.themoviedb.org/t/p/w300_and_h450_face/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg"},
-    {"movie_id": 6, "title": "Spirited Away", "genres": "Animation|Adventure|Fantasy", "poster_url": "https://media.themoviedb.org/t/p/w300_and_h450_face/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg"},
-    {"movie_id": 7, "title": "The Godfather", "genres": "Crime|Drama", "poster_url": "https://media.themoviedb.org/t/p/w300_and_h450_face/3bhkrj58Vtu7enYsRolD1fZdja1.jpg"},
-    {"movie_id": 8, "title": "Avengers: Endgame", "genres": "Action|Adventure|Drama", "poster_url": "https://media.themoviedb.org/t/p/w300_and_h450_face/ulzhLuWrPK07P1YkdWQLZnQh1JL.jpg"},
-    {"movie_id": 9, "title": "Coco", "genres": "Animation|Family|Fantasy", "poster_url": "https://media.themoviedb.org/t/p/w300_and_h450_face/6Ryitt95xrO8KXuqRGm1fUuNwqF.jpg"},
-    {"movie_id": 10, "title": "Whiplash", "genres": "Drama|Music", "poster_url": "https://media.themoviedb.org/t/p/w300_and_h450_face/7fn624j5lj3xTme2SgiLCeuedmO.jpg"},
-    {"movie_id": 11, "title": "La La Land", "genres": "Comedy|Drama|Music", "poster_url": "https://media.themoviedb.org/t/p/w300_and_h450_face/uDO8zWDhfWwoFdKS4fzkUJt0Rf0.jpg"},
-    {"movie_id": 12, "title": "Titanic", "genres": "Drama|Romance", "poster_url": "https://media.themoviedb.org/t/p/w300_and_h450_face/9xjZS2rlVxm8SFx8kPC3aIGCOYQ.jpg"},
+    {"movie_id": 1, "title": "The Matrix", "genres": "Action|Sci-Fi", "poster_url": "/static/posters/movie_1.jpg"},
+    {"movie_id": 2, "title": "Inception", "genres": "Action|Adventure|Sci-Fi", "poster_url": "/static/posters/movie_2.jpg"},
+    {"movie_id": 3, "title": "Interstellar", "genres": "Adventure|Drama|Sci-Fi", "poster_url": "/static/posters/movie_3.jpg"},
+    {"movie_id": 4, "title": "The Dark Knight", "genres": "Action|Crime|Drama", "poster_url": "/static/posters/movie_4.jpg"},
+    {"movie_id": 5, "title": "Parasite", "genres": "Drama|Thriller", "poster_url": "/static/posters/movie_5.jpg"},
+    {"movie_id": 6, "title": "Spirited Away", "genres": "Animation|Adventure|Fantasy", "poster_url": "/static/posters/movie_6.jpg"},
+    {"movie_id": 7, "title": "The Godfather", "genres": "Crime|Drama", "poster_url": "/static/posters/movie_7.jpg"},
+    {"movie_id": 8, "title": "Avengers: Endgame", "genres": "Action|Adventure|Drama", "poster_url": "/static/posters/movie_8.jpg"},
+    {"movie_id": 9, "title": "Coco", "genres": "Animation|Family|Fantasy", "poster_url": "/static/posters/movie_9.jpg"},
+    {"movie_id": 10, "title": "Whiplash", "genres": "Drama|Music", "poster_url": "/static/posters/movie_10.jpg"},
+    {"movie_id": 11, "title": "La La Land", "genres": "Comedy|Drama|Music", "poster_url": "/static/posters/movie_11.jpg"},
+    {"movie_id": 12, "title": "Titanic", "genres": "Drama|Romance", "poster_url": "/static/posters/movie_12.jpg"},
 ]
 
 STATIC_POSTER_URLS = {movie["title"]: movie["poster_url"] for movie in DEFAULT_MOVIES}
@@ -37,19 +34,14 @@ def _normalize_title_key(title: str) -> str:
 
 
 def _placeholder_url(title: str) -> str:
-    return f"https://placehold.co/300x450/0f172a/f8fafc?text={quote_plus(title)}"
+    del title
+    return "/static/posters/placeholder.svg"
 
 
 def _normalize_movie_row(row: dict) -> dict:
     raw_movie_id = row.get("movie_id") or row.get("movieId") or row.get("id")
     title = row.get("title") or row.get("original_title") or row.get("name") or "Untitled Movie"
     genres = row.get("genres") or row.get("genre") or "Unknown"
-
-    poster_url = row.get("poster_url") or row.get("posterPath") or row.get("poster_path") or ""
-    if poster_url and not poster_url.startswith("http") and poster_url.startswith("/"):
-        poster_url = f"https://image.tmdb.org/t/p/w500{poster_url}"
-    if not poster_url:
-        poster_url = STATIC_POSTER_URLS.get(title, _placeholder_url(title))
 
     movie_id = None
     if raw_movie_id not in (None, ""):
@@ -58,11 +50,23 @@ def _normalize_movie_row(row: dict) -> dict:
         except (TypeError, ValueError):
             movie_id = None
 
+    poster_url = (row.get("poster_url") or row.get("posterPath") or row.get("poster_path") or "").strip()
+    if poster_url.startswith("/static/posters/"):
+        normalized_poster_url = poster_url
+    else:
+        parsed = urlparse(poster_url) if poster_url else None
+        if parsed and parsed.path.startswith("/static/posters/"):
+            normalized_poster_url = parsed.path
+        elif movie_id is not None:
+            normalized_poster_url = f"/static/posters/movie_{movie_id}.jpg"
+        else:
+            normalized_poster_url = STATIC_POSTER_URLS.get(title, _placeholder_url(title))
+
     return {
         "movie_id": movie_id,
         "title": title,
         "genres": genres,
-        "poster_url": poster_url,
+        "poster_url": normalized_poster_url,
     }
 
 
@@ -105,7 +109,6 @@ def _movielens_movie_rows(data_dir: Path) -> list[dict]:
         return []
 
     rating_counts: Counter[int] = Counter()
-    tmdb_by_movielens_id = load_movielens_tmdb_by_movie_id(data_dir)
     with ratings_csv.open("r", encoding="utf-8", newline="") as csv_file:
         reader = csv.DictReader(csv_file)
         for row in reader:
@@ -133,7 +136,6 @@ def _movielens_movie_rows(data_dir: Path) -> list[dict]:
                     "title": title,
                     "genres": (row.get("genres") or "Unknown").replace("(no genres listed)", "Unknown"),
                     "rating_count": int(rating_counts.get(movie_id, 0)),
-                    "tmdb_id": tmdb_by_movielens_id.get(movie_id),
                 }
             )
 
@@ -143,7 +145,7 @@ def _movielens_movie_rows(data_dir: Path) -> list[dict]:
 
 def ensure_movie_catalog(session, csv_path: Path, target_count: int = 50) -> int:
     inserted = 0
-    newly_inserted: list[tuple[Movie, int | None]] = []
+    newly_inserted: list[Movie] = []
     existing_movies = Movie.query.order_by(Movie.movie_id.asc()).all()
     existing_movie_ids = {int(movie.movie_id) for movie in existing_movies}
     existing_title_keys = {_normalize_title_key(movie.title) for movie in existing_movies}
@@ -156,7 +158,7 @@ def ensure_movie_catalog(session, csv_path: Path, target_count: int = 50) -> int
 
         movie = Movie(**row)
         session.add(movie)
-        newly_inserted.append((movie, None))
+        newly_inserted.append(movie)
         existing_movie_ids.add(int(row["movie_id"]))
         existing_title_keys.add(title_key)
         inserted += 1
@@ -180,17 +182,14 @@ def ensure_movie_catalog(session, csv_path: Path, target_count: int = 50) -> int
             movie.genres = row["genres"] or "Unknown"
             movie.poster_url = _placeholder_url(title)
             session.add(movie)
-            newly_inserted.append((movie, row.get("tmdb_id")))
+            newly_inserted.append(movie)
             existing_title_keys.add(title_key)
             current_count += 1
             inserted += 1
 
-    skip_poster_enrichment = bool(os.getenv("SKIP_POSTER_SYNC", "").strip())
-    enable_startup_poster_enrichment = os.getenv("ENABLE_STARTUP_POSTER_ENRICH", "").strip().lower() in {"1", "true", "yes", "on"}
-    if newly_inserted and not skip_poster_enrichment and enable_startup_poster_enrichment:
-        # Try to attach real posters immediately for freshly inserted rows.
-        for movie, tmdb_id_hint in newly_inserted:
-            enrich_movie_poster_from_tmdb(movie, force=False, tmdb_id_hint=tmdb_id_hint)
+    for movie in newly_inserted:
+        if "/static/posters/" not in (movie.poster_url or ""):
+            movie.poster_url = f"/static/posters/movie_{int(movie.movie_id)}.jpg"
 
     if inserted:
         session.commit()

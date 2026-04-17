@@ -15,7 +15,7 @@ function Explore({ movies, loadingMovies, onSelectMovie }) {
 
   return (
     <div className="page-stack">
-      <section className="hero-panel glass-card compact-hero">
+      <section className="hero-panel glass-card compact-hero animated-panel">
         <div>
           <p className="eyebrow mb-2">Explore</p>
           <h1 className="h2 fw-bold mb-2">Browse the catalog</h1>
@@ -46,9 +46,9 @@ function Explore({ movies, loadingMovies, onSelectMovie }) {
               <h2 className="h3 mb-0">{filteredMovies.length} matches</h2>
             </div>
           </div>
-          <div className="movie-grid">
+          <div className="poster-rail poster-rail--wrap">
             {filteredMovies.map((movie) => (
-              <MovieCard key={movie.movie_id} movie={movie} onClick={onSelectMovie} />
+              <MovieCard key={movie.movie_id} movie={movie} onClick={onSelectMovie} showButton={false} className="movie-card--compact" />
             ))}
           </div>
         </>

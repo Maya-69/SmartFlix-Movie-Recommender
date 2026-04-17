@@ -1,15 +1,10 @@
 import os
 import tempfile
 import unittest
-from pathlib import Path
-from typing import cast
-from unittest.mock import patch
 
 from backend.app import create_app
 from backend.db import db
-from backend.models import Interaction, Movie, User
-from backend.services.movielens_service import build_app_movie_index, load_movielens_ratings_for_app_movies
-from backend.services.tmdb_service import sync_movie_posters_from_tmdb
+from backend.models import Interaction, Movie, RecommendationFeedback, User
 
 
 class Phase1ApiTestCase(unittest.TestCase):
@@ -30,12 +25,13 @@ class Phase1ApiTestCase(unittest.TestCase):
             db.drop_all()
             db.create_all()
             movie_rows = [
-                (1, "Test Movie", "Drama", "https://placehold.co/300x450?text=Test"),
-                (2, "Another Test", "Action", "https://placehold.co/300x450?text=Another"),
-                (3, "Sci-Fi Test", "Sci-Fi", "https://placehold.co/300x450?text=Sci-Fi"),
-                (4, "Drama Test", "Drama", "https://placehold.co/300x450?text=Drama"),
-                (5, "Comedy Test", "Comedy", "https://placehold.co/300x450?text=Comedy"),
-                (6, "Adventure Test", "Adventure", "https://placehold.co/300x450?text=Adventure"),
+                (1, "Test Movie", "Drama", "/static/posters/movie_1.jpg"),
+                (2, "Another Test", "Action", "/static/posters/movie_2.jpg"),
+                (3, "Sci-Fi Test", "Sci-Fi", "/static/posters/movie_3.jpg"),
+                (4, "Drama Test", "Drama", "/static/posters/movie_4.jpg"),
+                (5, "Comedy Test", "Comedy", "/static/posters/movie_5.jpg"),
+                (6, "Adventure Test", "Adventure", "/static/posters/movie_6.jpg"),
+                (7, "Animated Test", "Animation|Family", "/static/posters/movie_7.jpg"),
             ]
             for movie_id, title, genres, poster_url in movie_rows:
                 movie = Movie()
@@ -68,6 +64,15 @@ class Phase1ApiTestCase(unittest.TestCase):
         titles = [movie["title"] for movie in payload["movies"]]
         self.assertIn("Test Movie", titles)
 
+    def test_movies_endpoint_returns_offline_posters(self):
+        response = self.client.get("/movies")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertGreater(payload["count"], 0)
+        for movie in payload["movies"]:
+            self.assertIn("/static/posters/", movie["poster_url"])
+            self.assertNotIn("themoviedb", movie["poster_url"].lower())
+
     def test_interaction_is_saved(self):
         user_response = self.client.post("/user", json={"username": "maya"})
         user_id = user_response.get_json()["user"]["user_id"]
@@ -77,18 +82,19 @@ class Phase1ApiTestCase(unittest.TestCase):
             json={
                 "user_id": user_id,
                 "movie_id": 1,
-                "watched": True,
-                "watch_duration": "full",
-                "completed": True,
-                "skipped_scenes": False,
-                "skipped_music": False,
-                "interest_level": 5,
+                "rating": 5,
+                "watch_duration_minutes": 95,
+                "percent_completed": 100,
+                "watched_one_sitting": True,
+                "skip_count": 0,
+                "would_watch_again": True,
+                "time_of_day": "night",
             },
         )
 
         self.assertEqual(response.status_code, 201)
         payload = response.get_json()
-        self.assertEqual(payload["interaction"]["watch_duration"], "full")
+        self.assertEqual(payload["interaction"]["rating"], 5)
 
         with self.app.app_context():
             self.assertEqual(Interaction.query.count(), 1)
@@ -103,12 +109,13 @@ class Phase1ApiTestCase(unittest.TestCase):
             json={
                 "user_id": user_id,
                 "movie_id": 1,
-                "watched": True,
-                "watch_duration": "60",
-                "completed": False,
-                "skipped_scenes": True,
-                "skipped_music": False,
-                "interest_level": 4,
+                "rating": 4,
+                "watch_duration_minutes": 60,
+                "percent_completed": 66,
+                "watched_one_sitting": False,
+                "skip_count": 2,
+                "would_watch_again": False,
+                "time_of_day": "afternoon",
             },
         )
 
@@ -119,7 +126,7 @@ class Phase1ApiTestCase(unittest.TestCase):
         self.assertEqual(payload["interactions"][0]["movie_title"], "Test Movie")
         self.assertEqual(payload["interactions"][0]["username"], "maya")
 
-    def test_completed_without_watched_is_rejected(self):
+    def test_missing_duration_and_completion_percent_is_rejected(self):
         user_response = self.client.post("/user", json={"username": "maya"})
         user_id = user_response.get_json()["user"]["user_id"]
 
@@ -128,322 +135,16 @@ class Phase1ApiTestCase(unittest.TestCase):
             json={
                 "user_id": user_id,
                 "movie_id": 1,
-                "watched": False,
-                "watch_duration": "10",
-                "completed": True,
-                "skipped_scenes": False,
-                "skipped_music": False,
-                "interest_level": 2,
+                "rating": 2,
+                "watched_one_sitting": True,
+                "skip_count": 0,
+                "would_watch_again": False,
+                "time_of_day": "morning",
             },
         )
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn("completed", response.get_json()["error"])
-
-    def test_svd_recommendations_endpoint_returns_items(self):
-        user_response = self.client.post("/user", json={"username": "maya"})
-        user_id = user_response.get_json()["user"]["user_id"]
-
-        self.client.post(
-            "/interact",
-            json={
-                "user_id": user_id,
-                "movie_id": 1,
-                "watched": True,
-                "watch_duration": "full",
-                "completed": True,
-                "skipped_scenes": False,
-                "skipped_music": False,
-                "interest_level": 5,
-            },
-        )
-
-        response = self.client.get(f"/recommend/svd?user_id={user_id}&top_n=5")
-        self.assertEqual(response.status_code, 200)
-        payload = response.get_json()
-        self.assertGreater(payload["count"], 0)
-        self.assertIn("svd_score", payload["recommendations"][0])
-
-    def test_svd_recommendations_change_by_user_profile(self):
-        user_a_response = self.client.post("/user", json={"username": "maya"})
-        user_b_response = self.client.post("/user", json={"username": "alex"})
-        user_a_id = user_a_response.get_json()["user"]["user_id"]
-        user_b_id = user_b_response.get_json()["user"]["user_id"]
-
-        self.client.post(
-            "/interact",
-            json={
-                "user_id": user_a_id,
-                "movie_id": 1,
-                "watched": True,
-                "watch_duration": "full",
-                "completed": True,
-                "skipped_scenes": False,
-                "skipped_music": False,
-                "interest_level": 5,
-            },
-        )
-        self.client.post(
-            "/interact",
-            json={
-                "user_id": user_a_id,
-                "movie_id": 2,
-                "watched": True,
-                "watch_duration": "10",
-                "completed": False,
-                "skipped_scenes": True,
-                "skipped_music": True,
-                "interest_level": 1,
-            },
-        )
-        self.client.post(
-            "/interact",
-            json={
-                "user_id": user_a_id,
-                "movie_id": 3,
-                "watched": True,
-                "watch_duration": "full",
-                "completed": True,
-                "skipped_scenes": False,
-                "skipped_music": False,
-                "interest_level": 5,
-            },
-        )
-        self.client.post(
-            "/interact",
-            json={
-                "user_id": user_b_id,
-                "movie_id": 2,
-                "watched": True,
-                "watch_duration": "full",
-                "completed": True,
-                "skipped_scenes": False,
-                "skipped_music": False,
-                "interest_level": 5,
-            },
-        )
-        self.client.post(
-            "/interact",
-            json={
-                "user_id": user_b_id,
-                "movie_id": 1,
-                "watched": True,
-                "watch_duration": "10",
-                "completed": False,
-                "skipped_scenes": True,
-                "skipped_music": True,
-                "interest_level": 1,
-            },
-        )
-        self.client.post(
-            "/interact",
-            json={
-                "user_id": user_b_id,
-                "movie_id": 5,
-                "watched": True,
-                "watch_duration": "full",
-                "completed": True,
-                "skipped_scenes": False,
-                "skipped_music": False,
-                "interest_level": 5,
-            },
-        )
-
-        response_a = self.client.get(f"/recommend/svd?user_id={user_a_id}&top_n=20")
-        response_b = self.client.get(f"/recommend/svd?user_id={user_b_id}&top_n=20")
-        self.assertEqual(response_a.status_code, 200)
-        self.assertEqual(response_b.status_code, 200)
-
-        recommendations_a = response_a.get_json()["recommendations"]
-        recommendations_b = response_b.get_json()["recommendations"]
-        top_ids_a = [row["movie"]["movie_id"] for row in recommendations_a[:3]]
-        top_ids_b = [row["movie"]["movie_id"] for row in recommendations_b[:3]]
-
-        self.assertNotEqual(top_ids_a, top_ids_b)
-
-    def test_svd_nn_endpoint_returns_combined_scores(self):
-        user_response = self.client.post("/user", json={"username": "maya"})
-        user_id = user_response.get_json()["user"]["user_id"]
-
-        self.client.post(
-            "/interact",
-            json={
-                "user_id": user_id,
-                "movie_id": 1,
-                "watched": True,
-                "watch_duration": "full",
-                "completed": True,
-                "skipped_scenes": False,
-                "skipped_music": False,
-                "interest_level": 5,
-            },
-        )
-
-        response = self.client.get(f"/recommend/svd-nn?user_id={user_id}&top_n=5")
-        self.assertEqual(response.status_code, 200)
-        payload = response.get_json()
-        self.assertGreater(payload["count"], 0)
-        self.assertIn("svd_score", payload["recommendations"][0])
-        self.assertIn("nn_score", payload["recommendations"][0])
-        self.assertIn("combined_score", payload["recommendations"][0])
-
-    def test_tmdb_sync_uses_web_fallback_without_api_key(self):
-        with self.app.app_context():
-            with patch("backend.services.tmdb_service.search_tmdb_movie_page") as mock_search_page:
-                with patch("backend.services.tmdb_service.get_tmdb_poster_from_web") as mock_web_poster:
-                    mock_search_page.return_value = "/movie/123-test-movie"
-                    mock_web_poster.return_value = "https://media.themoviedb.org/t/p/w500/web-poster.jpg"
-                    result = sync_movie_posters_from_tmdb(db.session, force=True, limit=1)
-
-        self.assertEqual(result["status"], "synced")
-        self.assertEqual(result["updated"], 1)
-
-    def test_tmdb_sync_updates_placeholder_posters(self):
-        with self.app.app_context():
-            with patch("backend.services.tmdb_service.search_tmdb_movie") as mock_search:
-                mock_search.return_value = {"poster_path": "/poster.jpg"}
-                with patch.dict(os.environ, {"TMDB_API_KEY": "test-key", "TMDB_POSTER_SIZE": "w500"}, clear=False):
-                    result = sync_movie_posters_from_tmdb(db.session, force=True, limit=1)
-
-            movie = db.session.get(Movie, 1)
-
-        self.assertEqual(result["status"], "synced")
-        self.assertEqual(result["updated"], 1)
-        self.assertIsNotNone(movie)
-        movie_record = cast(Movie, movie)
-        self.assertEqual(movie_record.poster_url, "https://image.tmdb.org/t/p/w500/poster.jpg")
-
-    def test_tmdb_sync_endpoint_returns_result(self):
-        with patch("backend.routes.admin.sync_movie_posters_from_tmdb") as mock_sync:
-            mock_sync.return_value = {
-                "status": "synced",
-                "checked": 1,
-                "updated": 1,
-                "movies": [{"movie_id": 1, "title": "Test Movie", "poster_url": "https://image.tmdb.org/t/p/w500/poster.jpg"}],
-            }
-
-            response = self.client.post("/admin/tmdb/sync-posters", json={"force": True, "limit": 1})
-
-        self.assertEqual(response.status_code, 200)
-        payload = response.get_json()
-        self.assertEqual(payload["updated"], 1)
-
-    def test_tmdb_enrich_uses_tmdb_id_hint(self):
-        with self.app.app_context():
-            movie = db.session.get(Movie, 1)
-            self.assertIsNotNone(movie)
-            movie_record = cast(Movie, movie)
-
-            with patch("backend.services.tmdb_service.get_tmdb_movie_by_id") as mock_get_by_id:
-                mock_get_by_id.return_value = {"poster_path": "/hint.jpg"}
-                with patch.dict(os.environ, {"TMDB_API_KEY": "test-key", "TMDB_POSTER_SIZE": "w500"}, clear=False):
-                    from backend.services.tmdb_service import enrich_movie_poster_from_tmdb
-
-                    poster_url = enrich_movie_poster_from_tmdb(movie_record, force=True, tmdb_id_hint=299534)
-
-            self.assertEqual(poster_url, "https://image.tmdb.org/t/p/w500/hint.jpg")
-
-    def test_movielens_title_mapping_uses_normalized_titles(self):
-        with tempfile.TemporaryDirectory() as temp_dir_name:
-            temp_dir = Path(temp_dir_name)
-            movielens_dir = temp_dir / "ml-latest-small"
-            movielens_dir.mkdir(parents=True, exist_ok=True)
-            (movielens_dir / "movies.csv").write_text(
-                "movieId,title,genres\n"
-                "101,Test Movie,Drama\n"
-                "102,Another Test,Action\n",
-                encoding="utf-8",
-            )
-            (movielens_dir / "ratings.csv").write_text(
-                "userId,movieId,rating,timestamp\n"
-                "1,101,4.5,1\n"
-                "2,102,5.0,2\n",
-                encoding="utf-8",
-            )
-
-            with self.app.app_context():
-                app_movie_index = build_app_movie_index(db.session, temp_dir)
-                rows = load_movielens_ratings_for_app_movies(temp_dir, app_movie_index)
-
-        self.assertEqual(app_movie_index[1], 101)
-        self.assertEqual(app_movie_index[2], 102)
-        self.assertEqual(len(rows), 2)
-        self.assertEqual(rows[0]["movie_id"], 1)
-        self.assertEqual(rows[1]["movie_id"], 2)
-
-    def test_full_hybrid_endpoint_returns_fuzzy_adjusted_scores(self):
-        user_response = self.client.post("/user", json={"username": "maya"})
-        user_id = user_response.get_json()["user"]["user_id"]
-
-        self.client.post(
-            "/interact",
-            json={
-                "user_id": user_id,
-                "movie_id": 1,
-                "watched": True,
-                "watch_duration": "full",
-                "completed": True,
-                "skipped_scenes": False,
-                "skipped_music": False,
-                "interest_level": 5,
-            },
-        )
-
-        response = self.client.get(f"/recommend/full?user_id={user_id}&top_n=5")
-        self.assertEqual(response.status_code, 200)
-
-        payload = response.get_json()
-        self.assertGreater(payload["count"], 0)
-        row = payload["recommendations"][0]
-        self.assertIn("svd_score", row)
-        self.assertIn("nn_score", row)
-        self.assertIn("combined_score", row)
-        self.assertIn("fuzzy_boost", row)
-        self.assertIn("final_score", row)
-        self.assertGreaterEqual(row["fuzzy_boost"], 0.0)
-        self.assertLessEqual(row["fuzzy_boost"], 0.4)
-
-    def test_svd_nn_training_exposes_model_explanation(self):
-        user_response = self.client.post("/user", json={"username": "maya"})
-        user_id = user_response.get_json()["user"]["user_id"]
-
-        self.client.post(
-            "/interact",
-            json={
-                "user_id": user_id,
-                "movie_id": 1,
-                "watched": True,
-                "watch_duration": "full",
-                "completed": True,
-                "skipped_scenes": False,
-                "skipped_music": False,
-                "interest_level": 5,
-            },
-        )
-
-        response = self.client.get(f"/recommend/svd-nn?user_id={user_id}&top_n=5")
-        self.assertEqual(response.status_code, 200)
-
-        payload = response.get_json()
-        self.assertIn("training", payload)
-        self.assertIn("features", payload["training"])
-        self.assertIn("dataset_sources", payload["training"])
-        self.assertIn("explanation", payload["training"])
-        self.assertIn("why_nn", payload["training"]["explanation"])
-
-    def test_nn_metrics_endpoint_returns_visual_assets(self):
-        response = self.client.get("/metrics/nn")
-        self.assertEqual(response.status_code, 200)
-
-        payload = response.get_json()
-        self.assertIn("metrics", payload)
-        self.assertIn("plots", payload)
-        self.assertIn("loss_curve", payload["plots"])
-        self.assertIn("mae_curve", payload["plots"])
-        self.assertIn("confusion_matrix", payload["plots"])
-        self.assertIn("prediction_vs_actual", payload["plots"])
-        self.assertGreater(len(payload["plots"]["loss_curve"]), 100)
-        self.assertGreater(len(payload["prediction_samples"]), 0)
+        self.assertIn("watch_duration_minutes", response.get_json()["error"])
 
     def test_profile_endpoint_returns_classification(self):
         user_response = self.client.post("/user", json={"username": "maya"})
@@ -453,51 +154,422 @@ class Phase1ApiTestCase(unittest.TestCase):
             "/interact",
             json={
                 "user_id": user_id,
-                "movie_id": 1,
-                "watched": True,
-                "watch_duration": "10",
-                "completed": False,
-                "skipped_scenes": False,
-                "skipped_music": False,
-                "interest_level": 3,
+                "movie_id": 7,
+                "rating": 5,
+                "watch_duration_minutes": 120,
+                "percent_completed": 100,
+                "watched_one_sitting": True,
+                "skip_count": 0,
+                "would_watch_again": True,
+                "time_of_day": "night",
+            },
+        )
+
+        self.client.post(
+            "/interact",
+            json={
+                "user_id": user_id,
+                "movie_id": 6,
+                "rating": 4,
+                "watch_duration_minutes": 90,
+                "percent_completed": 85,
+                "watched_one_sitting": True,
+                "skip_count": 0,
+                "would_watch_again": True,
+                "time_of_day": "night",
             },
         )
 
         response = self.client.get(f"/profile/user?user_id={user_id}")
         self.assertEqual(response.status_code, 200)
         payload = response.get_json()["profile"]
-        self.assertEqual(payload["profile"], "Casual")
+        self.assertIn("profile_tags", payload)
+        self.assertIn("Animation Enjoyer", payload["profile_tags"])
+        self.assertIn("One-Sitting Watcher", payload["profile_tags"])
         self.assertIn("filter_genres", payload)
 
-    def test_recommendations_are_filtered_by_profile(self):
+    def test_tmdb_sync_endpoint_not_exposed(self):
+        response = self.client.post("/admin/tmdb/sync-posters", json={"force": True, "limit": 1})
+        self.assertEqual(response.status_code, 404)
+
+    def test_admin_cleanup_users_all_mode(self):
         user_response = self.client.post("/user", json={"username": "maya"})
         user_id = user_response.get_json()["user"]["user_id"]
 
-        for movie_id, watch_duration in [(1, "30"), (2, "30"), (3, "60")]:
-            self.client.post(
-                "/interact",
-                json={
-                    "user_id": user_id,
-                    "movie_id": movie_id,
-                    "watched": True,
-                    "watch_duration": watch_duration,
-                    "completed": False,
-                    "skipped_scenes": False,
-                    "skipped_music": False,
-                    "interest_level": 4,
-                },
-            )
+        self.client.post(
+            "/interact",
+            json={
+                "user_id": user_id,
+                "movie_id": 1,
+                "rating": 3,
+                "watch_duration_minutes": 30,
+                "percent_completed": 30,
+                "watched_one_sitting": False,
+                "skip_count": 0,
+                "would_watch_again": False,
+                "time_of_day": "night",
+            },
+        )
 
-        response = self.client.get(f"/profile/user?user_id={user_id}")
-        profile = response.get_json()["profile"]
-        self.assertEqual(profile["profile"], "Genre-based")
+        response = self.client.post("/admin/users/cleanup", json={"mode": "all"})
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["mode"], "all")
+        self.assertGreaterEqual(payload["deleted_users"], 1)
+        self.assertGreaterEqual(payload["deleted_interactions"], 1)
 
-        recommendations = self.client.get(f"/recommend/full?user_id={user_id}&top_n=20").get_json()["recommendations"]
-        self.assertGreater(len(recommendations), 0)
-        allowed_genres = [genre.lower() for genre in profile["filter_genres"]]
-        for row in recommendations:
-            movie_genres = [genre.strip().lower() for genre in row["movie"]["genres"].split("|")]
-            self.assertTrue(any(genre in movie_genres for genre in allowed_genres))
+    def test_svd_recommendations_endpoint_returns_payload(self):
+        maya_response = self.client.post("/user", json={"username": "maya"})
+        maya_user_id = maya_response.get_json()["user"]["user_id"]
+        alex_response = self.client.post("/user", json={"username": "alex"})
+        alex_user_id = alex_response.get_json()["user"]["user_id"]
+
+        self.client.post(
+            "/interact",
+            json={
+                "user_id": maya_user_id,
+                "movie_id": 1,
+                "rating": 5,
+                "watch_duration_minutes": 90,
+                "percent_completed": 100,
+                "watched_one_sitting": True,
+                "skip_count": 0,
+                "would_watch_again": True,
+                "time_of_day": "night",
+            },
+        )
+        self.client.post(
+            "/interact",
+            json={
+                "user_id": maya_user_id,
+                "movie_id": 2,
+                "rating": 4,
+                "watch_duration_minutes": 60,
+                "percent_completed": 80,
+                "watched_one_sitting": True,
+                "skip_count": 1,
+                "would_watch_again": True,
+                "time_of_day": "afternoon",
+            },
+        )
+        self.client.post(
+            "/interact",
+            json={
+                "user_id": alex_user_id,
+                "movie_id": 1,
+                "rating": 4,
+                "watch_duration_minutes": 70,
+                "percent_completed": 85,
+                "watched_one_sitting": False,
+                "skip_count": 0,
+                "would_watch_again": True,
+                "time_of_day": "night",
+            },
+        )
+        self.client.post(
+            "/interact",
+            json={
+                "user_id": alex_user_id,
+                "movie_id": 3,
+                "rating": 5,
+                "watch_duration_minutes": 80,
+                "percent_completed": 90,
+                "watched_one_sitting": True,
+                "skip_count": 0,
+                "would_watch_again": True,
+                "time_of_day": "morning",
+            },
+        )
+
+        response = self.client.get(f"/recommendations/svd?user_id={maya_user_id}&top_n=3")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["mode"], "svd")
+        self.assertIn("recommendations", payload)
+        self.assertLessEqual(len(payload["recommendations"]), 3)
+
+    def test_svd_recommendations_requires_user_id(self):
+        response = self.client.get("/recommendations/svd")
+        self.assertEqual(response.status_code, 400)
+
+    def test_svd_cold_start_matches_movies_ordering(self):
+        user_response = self.client.post("/user", json={"username": "new-user"})
+        user_id = user_response.get_json()["user"]["user_id"]
+
+        movies_response = self.client.get("/movies")
+        self.assertEqual(movies_response.status_code, 200)
+        movies_payload = movies_response.get_json()
+        expected_first_ids = [movie["movie_id"] for movie in movies_payload["movies"][:3]]
+
+        rec_response = self.client.get(f"/recommendations/svd?user_id={user_id}&top_n=3")
+        self.assertEqual(rec_response.status_code, 200)
+        rec_payload = rec_response.get_json()
+
+        self.assertEqual(rec_payload["mode"], "cold-start-popular")
+        actual_first_ids = [movie["movie_id"] for movie in rec_payload["recommendations"]]
+        self.assertEqual(actual_first_ids, expected_first_ids)
+
+    def test_svd_recommendations_work_with_single_active_user(self):
+        user_response = self.client.post("/user", json={"username": "solo"})
+        user_id = user_response.get_json()["user"]["user_id"]
+
+        self.client.post(
+            "/interact",
+            json={
+                "user_id": user_id,
+                "movie_id": 1,
+                "rating": 5,
+                "watch_duration_minutes": 120,
+                "percent_completed": 100,
+                "watched_one_sitting": True,
+                "skip_count": 0,
+                "would_watch_again": True,
+                "time_of_day": "night",
+            },
+        )
+        self.client.post(
+            "/interact",
+            json={
+                "user_id": user_id,
+                "movie_id": 2,
+                "rating": 4,
+                "watch_duration_minutes": 90,
+                "percent_completed": 90,
+                "watched_one_sitting": True,
+                "skip_count": 0,
+                "would_watch_again": True,
+                "time_of_day": "afternoon",
+            },
+        )
+
+        response = self.client.get(f"/recommendations/svd?user_id={user_id}&top_n=5")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["mode"], "svd")
+        self.assertGreater(len(payload["recommendations"]), 0)
+        recommended_ids = [movie["movie_id"] for movie in payload["recommendations"]]
+        self.assertNotIn(1, recommended_ids)
+        self.assertNotIn(2, recommended_ids)
+
+    def test_content_recommendations_endpoint_returns_payload(self):
+        user_response = self.client.post("/user", json={"username": "content-user"})
+        user_id = user_response.get_json()["user"]["user_id"]
+
+        self.client.post(
+            "/interact",
+            json={
+                "user_id": user_id,
+                "movie_id": 7,
+                "rating": 5,
+                "watch_duration_minutes": 120,
+                "percent_completed": 100,
+                "watched_one_sitting": True,
+                "skip_count": 0,
+                "would_watch_again": True,
+                "time_of_day": "night",
+            },
+        )
+        self.client.post(
+            "/interact",
+            json={
+                "user_id": user_id,
+                "movie_id": 6,
+                "rating": 4,
+                "watch_duration_minutes": 90,
+                "percent_completed": 85,
+                "watched_one_sitting": True,
+                "skip_count": 0,
+                "would_watch_again": True,
+                "time_of_day": "night",
+            },
+        )
+
+        response = self.client.get(f"/recommendations/content?user_id={user_id}&top_n=5")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["algorithm"], "content-based")
+        self.assertEqual(payload["mode"], "tfidf")
+        self.assertGreater(len(payload["recommendations"]), 0)
+        self.assertGreater(len(payload["seeds"]), 0)
+        recommended_ids = [movie["movie_id"] for movie in payload["recommendations"]]
+        self.assertNotIn(7, recommended_ids)
+        self.assertNotIn(6, recommended_ids)
+
+    def test_final_recommendations_endpoint_returns_blended_payload(self):
+        user_response = self.client.post("/user", json={"username": "hybrid-user"})
+        user_id = user_response.get_json()["user"]["user_id"]
+
+        self.client.post(
+            "/interact",
+            json={
+                "user_id": user_id,
+                "movie_id": 7,
+                "rating": 5,
+                "watch_duration_minutes": 120,
+                "percent_completed": 100,
+                "watched_one_sitting": True,
+                "skip_count": 0,
+                "would_watch_again": True,
+                "time_of_day": "night",
+            },
+        )
+        self.client.post(
+            "/interact",
+            json={
+                "user_id": user_id,
+                "movie_id": 6,
+                "rating": 4,
+                "watch_duration_minutes": 90,
+                "percent_completed": 85,
+                "watched_one_sitting": True,
+                "skip_count": 0,
+                "would_watch_again": True,
+                "time_of_day": "night",
+            },
+        )
+
+        response = self.client.get(f"/recommendations/final?user_id={user_id}&top_n=5")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["algorithm"], "hybrid-blend")
+        self.assertEqual(payload["mode"], "hybrid-final")
+        self.assertIn("blend", payload)
+        self.assertIn("mode", payload["blend"])
+        self.assertGreater(payload["blend"]["svd_weight"], 0)
+        self.assertGreater(payload["blend"]["content_weight"], 0)
+        self.assertIn("final_recommendations", payload)
+        self.assertIn("svd_recommendations", payload)
+        self.assertIn("content_recommendations", payload)
+        self.assertGreater(len(payload["final_recommendations"]), 0)
+        self.assertIn("final_score", payload["final_recommendations"][0])
+        self.assertIn("rank_score", payload["final_recommendations"][0])
+        self.assertIn("diversity_adjustment", payload["final_recommendations"][0])
+        self.assertIn("confidence_score", payload["final_recommendations"][0])
+        self.assertIn("agreement", payload["final_recommendations"][0])
+        self.assertIn("reasons", payload["final_recommendations"][0])
+        self.assertIn("diagnostics", payload)
+        self.assertIn("diversity", payload["diagnostics"])
+
+    def test_recommendation_feedback_endpoint_persists_feedback(self):
+        user_response = self.client.post("/user", json={"username": "feedback-user"})
+        user_id = user_response.get_json()["user"]["user_id"]
+
+        response = self.client.post(
+            "/recommendations/feedback",
+            json={
+                "user_id": user_id,
+                "movie_id": 1,
+                "helpful": True,
+                "source": "final",
+                "svd_score": 0.91,
+                "content_score": 0.12,
+                "final_score": 0.87,
+                "agreement": "both",
+                "rank_score": 0.93,
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        payload = response.get_json()
+        self.assertTrue(payload["feedback"]["helpful"])
+        self.assertEqual(payload["feedback"]["source"], "final")
+
+        with self.app.app_context():
+            self.assertEqual(RecommendationFeedback.query.count(), 1)
+
+    def test_recommendation_feedback_reset_clears_history(self):
+        user_response = self.client.post("/user", json={"username": "reset-user"})
+        user_id = user_response.get_json()["user"]["user_id"]
+
+        self.client.post(
+            "/recommendations/feedback",
+            json={
+                "user_id": user_id,
+                "movie_id": 1,
+                "helpful": True,
+                "source": "final",
+                "svd_score": 0.8,
+                "content_score": 0.2,
+                "final_score": 0.7,
+                "agreement": "both",
+                "rank_score": 0.75,
+            },
+        )
+
+        response = self.client.post("/recommendations/feedback/reset", json={"user_id": user_id})
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["deleted_feedback"], 1)
+
+        with self.app.app_context():
+            self.assertEqual(RecommendationFeedback.query.count(), 0)
+
+    def test_feedback_adjusts_hybrid_blend_weights(self):
+        user_response = self.client.post("/user", json={"username": "tuning-user"})
+        user_id = user_response.get_json()["user"]["user_id"]
+
+        self.client.post(
+            "/interact",
+            json={
+                "user_id": user_id,
+                "movie_id": 7,
+                "rating": 5,
+                "watch_duration_minutes": 120,
+                "percent_completed": 100,
+                "watched_one_sitting": True,
+                "skip_count": 0,
+                "would_watch_again": True,
+                "time_of_day": "night",
+            },
+        )
+        self.client.post(
+            "/interact",
+            json={
+                "user_id": user_id,
+                "movie_id": 6,
+                "rating": 4,
+                "watch_duration_minutes": 90,
+                "percent_completed": 85,
+                "watched_one_sitting": True,
+                "skip_count": 0,
+                "would_watch_again": True,
+                "time_of_day": "night",
+            },
+        )
+
+        before_response = self.client.get(f"/recommendations/final?user_id={user_id}&top_n=5")
+        self.assertEqual(before_response.status_code, 200)
+        before_payload = before_response.get_json()
+        first_recommendation = before_payload["final_recommendations"][0]
+        svd_weight_before = before_payload["blend"]["svd_weight"]
+        content_weight_before = before_payload["blend"]["content_weight"]
+
+        dominant_engine = "svd" if first_recommendation["svd_score"] >= first_recommendation["content_score"] else "content"
+
+        self.client.post(
+            "/recommendations/feedback",
+            json={
+                "user_id": user_id,
+                "movie_id": first_recommendation["movie_id"],
+                "helpful": True,
+                "source": "final",
+                "svd_score": first_recommendation["svd_score"],
+                "content_score": first_recommendation["content_score"],
+                "final_score": first_recommendation["final_score"],
+                "agreement": first_recommendation["agreement"],
+                "rank_score": first_recommendation["rank_score"],
+            },
+        )
+
+        after_response = self.client.get(f"/recommendations/final?user_id={user_id}&top_n=5")
+        self.assertEqual(after_response.status_code, 200)
+        after_payload = after_response.get_json()
+
+        self.assertGreater(after_payload["diagnostics"]["feedback_count"], 0)
+        if dominant_engine == "svd":
+            self.assertGreater(after_payload["blend"]["svd_weight"], svd_weight_before)
+        else:
+            self.assertGreater(after_payload["blend"]["content_weight"], content_weight_before)
 
 
 if __name__ == "__main__":

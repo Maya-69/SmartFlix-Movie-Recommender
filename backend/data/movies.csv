@@ -1,13 +1,13 @@
 movie_id,title,genres,poster_url
-1,The Matrix,Action|Sci-Fi,https://media.themoviedb.org/t/p/w300_and_h450_face/aOIuZAjPaRIE6CMzbazvcHuHXDc.jpg
-2,Inception,Action|Adventure|Sci-Fi,https://media.themoviedb.org/t/p/w300_and_h450_face/xlaY2zyzMfkhk0HSC5VUwzoZPU1.jpg
-3,Interstellar,Adventure|Drama|Sci-Fi,https://media.themoviedb.org/t/p/w300_and_h450_face/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg
-4,The Dark Knight,Action|Crime|Drama,https://media.themoviedb.org/t/p/w300_and_h450_face/qJ2tW6WMUDux911r6m7haRef0WH.jpg
-5,Parasite,Drama|Thriller,https://media.themoviedb.org/t/p/w300_and_h450_face/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg
-6,Spirited Away,Animation|Adventure|Fantasy,https://media.themoviedb.org/t/p/w300_and_h450_face/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg
-7,The Godfather,Crime|Drama,https://media.themoviedb.org/t/p/w300_and_h450_face/3bhkrj58Vtu7enYsRolD1fZdja1.jpg
-8,Avengers: Endgame,Action|Adventure|Drama,https://media.themoviedb.org/t/p/w300_and_h450_face/ulzhLuWrPK07P1YkdWQLZnQh1JL.jpg
-9,Coco,Animation|Family|Fantasy,https://media.themoviedb.org/t/p/w300_and_h450_face/6Ryitt95xrO8KXuqRGm1fUuNwqF.jpg
-10,Whiplash,Drama|Music,https://media.themoviedb.org/t/p/w300_and_h450_face/7fn624j5lj3xTme2SgiLCeuedmO.jpg
-11,La La Land,Comedy|Drama|Music,https://media.themoviedb.org/t/p/w300_and_h450_face/uDO8zWDhfWwoFdKS4fzkUJt0Rf0.jpg
-12,Titanic,Drama|Romance,https://media.themoviedb.org/t/p/w300_and_h450_face/9xjZS2rlVxm8SFx8kPC3aIGCOYQ.jpg
+1,The Matrix,Action|Sci-Fi,/static/posters/movie_1.jpg
+2,Inception,Action|Adventure|Sci-Fi,/static/posters/movie_2.jpg
+3,Interstellar,Adventure|Drama|Sci-Fi,/static/posters/movie_3.jpg
+4,The Dark Knight,Action|Crime|Drama,/static/posters/movie_4.jpg
+5,Parasite,Drama|Thriller,/static/posters/movie_5.jpg
+6,Spirited Away,Animation|Adventure|Fantasy,/static/posters/movie_6.jpg
+7,The Godfather,Crime|Drama,/static/posters/movie_7.jpg
+8,Avengers: Endgame,Action|Adventure|Drama,/static/posters/movie_8.jpg
+9,Coco,Animation|Family|Fantasy,/static/posters/movie_9.jpg
+10,Whiplash,Drama|Music,/static/posters/movie_10.jpg
+11,La La Land,Comedy|Drama|Music,/static/posters/movie_11.jpg
+12,Titanic,Drama|Romance,/static/posters/movie_12.jpg

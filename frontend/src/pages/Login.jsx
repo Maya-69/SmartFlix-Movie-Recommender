@@ -26,7 +26,7 @@ function Login({ currentUser, onLogin, loading, error }) {
     <section className="auth-layout">
       <div className="auth-card glass-card">
         <p className="eyebrow mb-2">SmartFlix</p>
-        <h1 className="display-5 fw-bold mb-3">Hybrid movie recommendations with a viva-friendly interface.</h1>
+        <h1 className="display-5 fw-bold mb-3">Offline movie interaction tracker with a clean, viva-friendly interface.</h1>
         <p className="text-secondary mb-4">Start with username-only login, movie browsing, and structured interaction capture. No playback, just data collection.</p>
 
         <form onSubmit={handleSubmit} className="d-grid gap-3">

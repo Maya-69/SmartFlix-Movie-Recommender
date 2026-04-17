@@ -1,25 +1,47 @@
 from flask import Blueprint, jsonify, request
+from sqlalchemy import func
 
 from backend.db import db
-from backend.services.tmdb_service import sync_movie_posters_from_tmdb
+from backend.models import Interaction, User
 
 admin_bp = Blueprint("admin", __name__)
 
 
-@admin_bp.post("/admin/tmdb/sync-posters")
-def sync_tmdb_posters():
+@admin_bp.post("/admin/users/cleanup")
+def cleanup_users():
     payload = request.get_json(silent=True) or {}
-    force = bool(payload.get("force", False))
+    mode = str(payload.get("mode", "all")).strip().lower()
+    if mode not in {"all", "inactive"}:
+        return jsonify({"error": "mode must be 'all' or 'inactive'"}), 400
 
-    raw_limit = payload.get("limit")
-    limit = None
-    if raw_limit not in (None, ""):
-        try:
-            limit = int(raw_limit)
-        except (TypeError, ValueError):
-            return jsonify({"error": "limit must be an integer"}), 400
-        if limit < 1:
-            return jsonify({"error": "limit must be greater than 0"}), 400
+    deleted_interactions = 0
+    deleted_users = 0
 
-    result = sync_movie_posters_from_tmdb(db.session, force=force, limit=limit)
-    return jsonify(result), 200
+    if mode == "all":
+        deleted_interactions = Interaction.query.delete(synchronize_session=False)
+        deleted_users = User.query.delete(synchronize_session=False)
+    else:
+        inactive_user_ids = (
+            db.session.query(User.user_id)
+            .outerjoin(Interaction, Interaction.user_id == User.user_id)
+            .group_by(User.user_id)
+            .having(func.count(Interaction.interaction_id) == 0)
+            .all()
+        )
+        ids = [row[0] for row in inactive_user_ids]
+        if ids:
+            deleted_users = User.query.filter(User.user_id.in_(ids)).delete(synchronize_session=False)
+
+    db.session.commit()
+
+    return (
+        jsonify(
+            {
+                "status": "ok",
+                "mode": mode,
+                "deleted_users": int(deleted_users),
+                "deleted_interactions": int(deleted_interactions),
+            }
+        ),
+        200,
+    )

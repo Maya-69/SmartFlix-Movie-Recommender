@@ -31,7 +31,7 @@ function Profile({ currentUser }) {
           <p className="eyebrow mb-2">Profile</p>
           <h1 className="h2 fw-bold mb-2">User profiling</h1>
           <p className="text-secondary mb-0">
-            The system classifies your behavior to shape the recommendation filters used downstream.
+            The system classifies your behavior from your saved interactions.
           </p>
         </div>
       </section>
@@ -60,6 +60,19 @@ function Profile({ currentUser }) {
             <span className="metric-label">Skip rate</span>
             <span className="metric-value">{Math.round(payload.skip_rate * 100)}%</span>
           </article>
+          <article className="glass-card profile-card profile-card-wide">
+            <span className="metric-label">Behavior tags</span>
+            <div className="d-flex flex-wrap gap-2 mt-2 mb-2">
+              {(payload.profile_tags || []).map((tag) => (
+                <span key={tag} className="badge text-bg-info">{tag}</span>
+              ))}
+            </div>
+            <div className="small text-secondary">
+              {Object.entries(payload.profile_tag_reasons || {}).map(([tag, reason]) => (
+                <div key={tag} className="mb-1"><strong>{tag}:</strong> {reason}</div>
+              ))}
+            </div>
+          </article>
         </section>
       ) : (
         <div className="alert alert-dark border-0 mb-0">No profile data available yet.</div>
@@ -70,7 +83,7 @@ function Profile({ currentUser }) {
           <div className="section-header mb-3">
             <div>
               <p className="eyebrow mb-1">Filtered preferences</p>
-              <h2 className="h4 mb-0">Genres used for recommendation filtering</h2>
+              <h2 className="h4 mb-0">Top genres in your interaction profile</h2>
             </div>
           </div>
           <div className="d-flex flex-wrap gap-2">
