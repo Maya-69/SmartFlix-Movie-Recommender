@@ -4,12 +4,30 @@ SmartFlix is a full-stack movie recommendation app with offline posters, local S
 
 ## How To Run
 
-### 1. Backend
+### Prerequisites
+
+- Python 3.8+ with pip
+- Node.js 16+ with npm
+
+### 1. Backend Setup & Initialization
 
 From the repo root:
 
 ```bash
 pip install -r requirements.txt
+```
+
+**Initialize database with seed data** (run once per new machine):
+
+```bash
+python -m backend.scripts.init_db
+```
+
+This creates the SQLite database, loads 50 movies, and creates a demo user with sample ratings so recommendations work immediately.
+
+Then start the backend:
+
+```bash
 python -m backend.app
 ```
 
@@ -17,7 +35,7 @@ The backend runs on `http://localhost:5000` by default.
 
 **Note the IP/hostname and port where your backend is running** – you'll need this for the frontend.
 
-### 2. Frontend
+### 2. Frontend Setup
 
 In a second terminal:
 
@@ -47,6 +65,8 @@ npm run dev
 
 The frontend runs on `http://localhost:5173` by default.
 
+**Login with username** `demo_user` to test recommendations immediately.
+
 ### 3. Troubleshooting
 
 **Posters show as "unavailable"?**
@@ -65,6 +85,33 @@ hostname -I          # Get backend IP, e.g., 192.168.1.100
 # On the machine with the frontend, edit frontend/.env.local:
 VITE_API_BASE_URL=http://192.168.1.100:5000
 npm run dev
+```
+
+**Recommendations endpoint returns 404?**
+
+This means the database hasn't been initialized with seed data. Run:
+```bash
+python -m backend.scripts.init_db
+```
+
+This ensures:
+- ✅ Database tables exist
+- ✅ Movies are loaded (50 default)
+- ✅ Demo user exists
+- ✅ Sample ratings exist (recommendations need training data)
+
+After running `init_db`, login with username `demo_user` to see recommendations immediately.
+
+**Python version issues on Windows?**
+
+If `py -m backend.app` doesn't work, use:
+```bash
+python -m backend.app
+```
+
+Make sure `python` is in your PATH. Check with:
+```bash
+python --version
 ```
 
 ### 4. Optional checks
