@@ -64,7 +64,7 @@ function Home({ currentUser, movies, loadingMovies, onSelectMovie }) {
 
   const featuredMovies = useMemo(() => {
     const source = popularRecommendations.length > 0 ? popularRecommendations : movies
-    return source.slice(0, 6)
+    return source.slice(0, 10)
   }, [popularRecommendations, movies])
 
   useEffect(() => {
@@ -269,7 +269,7 @@ function Home({ currentUser, movies, loadingMovies, onSelectMovie }) {
                   },
                 ]}
                 showButton={false}
-                className="movie-card--compact"
+                className="movie-card--compact movie-card--feedback"
               />
             ))}
           </div>

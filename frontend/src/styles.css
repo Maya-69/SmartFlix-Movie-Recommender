@@ -320,6 +320,17 @@ body::before {
   display: none;
 }
 
+.movie-card--compact.movie-card--feedback .movie-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: auto;
+}
+
+.movie-card--compact.movie-card--feedback .movie-actions .btn {
+  display: inline-flex;
+}
+
 .hero-panel {
   display: grid;
   gap: 1.5rem;
